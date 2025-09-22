@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Discord Dossier Manager</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Discord Dossier Manager</h1>
+    <p class="subtitle">Edit summaries and post dossier updates without leaving the browser.</p>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="panel">
+        <label for="guildSelect" class="panel-label">Guild</label>
+        <select id="guildSelect" class="input"></select>
+      </div>
+      <div class="panel panel-list">
+        <div class="panel-header">
+          <h2>People</h2>
+          <button id="refreshButton" class="button button-secondary">⟳</button>
+        </div>
+        <div id="personList" class="person-list" role="listbox"></div>
+      </div>
+    </aside>
+
+    <section class="content" id="content">
+      <div id="emptyState" class="empty-state">
+        <p>Select a guild to load dossiers.</p>
+      </div>
+
+      <div id="personView" class="hidden">
+        <div class="person-header">
+          <div>
+            <h2 id="personName"></h2>
+            <p id="personMeta" class="meta"></p>
+          </div>
+          <a id="threadLink" class="button button-link" href="#" target="_blank" rel="noopener">Open Thread ↗</a>
+        </div>
+        <div id="threadWarning" class="alert hidden">Dossier thread missing or inaccessible. Recreate it in Discord with <code>?add</code> before editing.</div>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Summary</h3>
+            <span id="summaryCount" class="meta">0/600</span>
+          </div>
+          <textarea id="summaryInput" class="input input-textarea" rows="6" maxlength="600" placeholder="Write a concise, 1–2 sentence summary (public info only)"></textarea>
+          <input id="summaryEditorId" class="input" type="text" placeholder="Discord user ID (optional)" />
+          <div class="card-actions">
+            <button id="saveSummaryButton" class="button">Save Summary</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>New Entry</h3>
+            <span class="meta">Markdown supported. Names are auto-linked.</span>
+          </div>
+          <form id="entryForm" class="entry-form">
+            <input id="entryTitle" class="input" type="text" placeholder="Entry title" required maxlength="200" />
+            <textarea id="entryBody" class="input input-textarea" rows="6" placeholder="Detailed update" required></textarea>
+            <input id="entryAuthor" class="input" type="text" placeholder="Discord user ID (optional)" />
+            <div class="card-actions card-actions-split">
+              <span id="entryFormHint" class="meta hidden"></span>
+              <div class="card-actions-buttons">
+                <button type="button" id="cancelEditButton" class="button button-secondary hidden">Cancel</button>
+                <button type="submit" class="button">Post Entry</button>
+              </div>
+            </div>
+          </form>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h3>Timeline</h3>
+            <span class="meta" id="entryCount"></span>
+          </div>
+          <div id="entryList" class="entry-list"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
