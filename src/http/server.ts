@@ -117,6 +117,22 @@ const isThreadChannel = (channel: unknown): channel is ThreadChannel => {
   return typeof maybe.isThread === 'function' && maybe.isThread();
 };
 
+const fetchPersonEnsureThreadState = async (bot: DossierBot, personId: number): Promise<PersonRecord> => {
+  let person = personService.getById(personId);
+  if (!person) {
+    throw new HttpError(404, 'Person not found');
+  }
+
+  if (person.discord_thread_id) {
+    const channel = await bot.client.channels.fetch(person.discord_thread_id).catch(() => null);
+    if (!channel) {
+      person = personService.clearThread(person.id) ?? person;
+    }
+  }
+
+  return personService.getById(person.id) ?? person;
+};
+
 const ensureThreadChannel = async (bot: DossierBot, personId: number) => {
   const person = personService.getById(personId);
   if (!person) {
@@ -354,11 +370,7 @@ export const startHttpServer = async (bot: DossierBot): Promise<FastifyInstance>
       throw new HttpError(400, 'Invalid person id');
     }
 
-    const person = personService.getById(personId);
-    if (!person) {
-      throw new HttpError(404, 'Person not found');
-    }
-
+    const person = await fetchPersonEnsureThreadState(bot, personId);
     const entries = personService.listEntries(person.id);
     return { person, entries };
   });
@@ -410,6 +422,38 @@ export const startHttpServer = async (bot: DossierBot): Promise<FastifyInstance>
 
     const { entry, reposted } = await handleEntryUpdate(bot, personId, entryId, parsed.data);
     return { status: 'ok', entry, reposted };
+  });
+
+  fastify.post('/api/persons/:id/refresh-links', async (request) => {
+    const personId = Number((request.params as { id: string }).id);
+    if (Number.isNaN(personId)) {
+      throw new HttpError(400, 'Invalid person id');
+    }
+
+    const person = await fetchPersonEnsureThreadState(bot, personId);
+    if (!person.discord_thread_id) {
+      throw new HttpError(409, 'Dossier thread missing. Recreate it in Discord first.');
+    }
+
+    const entries = personService.listEntries(person.id);
+    if (!entries.length) {
+      return { status: 'ok', updated: 0, reposted: 0 };
+    }
+
+    let updatedCount = 0;
+    let repostedCount = 0;
+
+    for (const entry of entries) {
+      const { reposted } = await handleEntryUpdate(bot, person.id, entry.id, {
+        title: entry.title,
+        body_md: entry.body_md,
+        updated_by: entry.updated_by ?? entry.created_by ?? undefined,
+      });
+      updatedCount += 1;
+      if (reposted) repostedCount += 1;
+    }
+
+    return { status: 'ok', updated: updatedCount, reposted: repostedCount };
   });
 
   fastify.post('/webhook', async (request, reply) => {

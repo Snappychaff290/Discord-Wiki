@@ -27,6 +27,7 @@ const entryBodyInput = document.getElementById('entryBody');
 const entryAuthorInput = document.getElementById('entryAuthor');
 const entryFormHint = document.getElementById('entryFormHint');
 const cancelEditButton = document.getElementById('cancelEditButton');
+const refreshLinksButton = document.getElementById('refreshLinksButton');
 const entryListEl = document.getElementById('entryList');
 const entryCountEl = document.getElementById('entryCount');
 const toastEl = document.getElementById('toast');
@@ -263,6 +264,7 @@ const renderPersonView = () => {
     threadLinkEl.classList.remove('button-disabled');
     threadWarningEl.classList.add('hidden');
     saveSummaryButton.disabled = false;
+    refreshLinksButton.disabled = false;
     entryForm.querySelectorAll('input, textarea, button').forEach((el) => (el.disabled = false));
     entrySubmitButton.textContent = state.editingEntryId ? 'Save Changes' : 'Post Entry';
   } else {
@@ -270,6 +272,7 @@ const renderPersonView = () => {
     threadLinkEl.classList.add('button-disabled');
     threadWarningEl.classList.remove('hidden');
     saveSummaryButton.disabled = true;
+    refreshLinksButton.disabled = true;
     resetEntryForm();
     entryForm.querySelectorAll('input, textarea, button').forEach((el) => (el.disabled = true));
   }
@@ -372,6 +375,27 @@ refreshButton.addEventListener('click', async () => {
 cancelEditButton.addEventListener('click', () => {
   resetEntryForm();
   renderEntries();
+});
+
+refreshLinksButton.addEventListener('click', async () => {
+  if (!state.currentPerson) return;
+  if (!state.currentPerson.discord_thread_id) {
+    showToast('Dossier thread missing. Recreate it in Discord before refreshing.', 'error');
+    return;
+  }
+
+  refreshLinksButton.disabled = true;
+  try {
+    const data = await fetchJson(`/api/persons/${state.currentPerson.id}/refresh-links`, {
+      method: 'POST',
+    });
+    await loadPersons();
+    showToast(`Refreshed ${data.updated} entr${data.updated === 1 ? 'y' : 'ies'}${data.reposted ? ` · ${data.reposted} re-posted` : ''}`);
+  } catch (error) {
+    showToast(error.message, 'error');
+  } finally {
+    refreshLinksButton.disabled = false;
+  }
 });
 
 saveSummaryButton.addEventListener('click', async () => {

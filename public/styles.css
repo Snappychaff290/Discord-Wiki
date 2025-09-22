@@ -269,6 +269,12 @@ body {
   gap: 12px;
 }
 
+.card-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .card-header h3 {
   margin: 0;
   font-size: 18px;

@@ -43,6 +43,7 @@ A Discord.js + Fastify service that manages dossier threads inside a forum chann
 - Select a person to edit their summary or post entries.
 - The UI enforces the 600 character summary limit, edits existing summary/entry messages, and re-links names via the REST API (which mirrors the webhook behaviour). If a Discord message was deleted, the bot will create a fresh one and update the database automatically.
 - Optional Discord user IDs can be supplied for summary editors and entry authors; they are stored in the database and echoed back in the timeline.
+- Use the **Refresh Links** button to re-run wiki-linking on the timeline after new dossiers are created.
 
 ### REST API
 
@@ -54,6 +55,7 @@ The web app talks to JSON endpoints you can reuse from other tools:
 - `PATCH /api/persons/:id/summary` → update summary (body: `{ summary_md, updated_by? }`)
 - `POST /api/persons/:id/entries` → add entry (`{ title, body_md, created_by? }`)
 - `PATCH /api/persons/:id/entries/:entryId` → edit entry (`{ title, body_md, updated_by? }`)
+- `POST /api/persons/:id/refresh-links` → re-run wiki-linking on all entries
 
 All endpoints return JSON and reuse the same validation as the webhook route.
 

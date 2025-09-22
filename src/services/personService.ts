@@ -58,11 +58,12 @@ export const personService = {
   updateEntry(params: { personId: number; entryId: number; title: string; bodyMd: string; updatedBy?: string | null; messageId?: string | null; }): EntryRow | null {
     const existing = personRepository.getEntryById(params.entryId);
     if (!existing || existing.person_id !== params.personId) return null;
+    const updatedBy = params.updatedBy ?? existing.updated_by ?? existing.created_by ?? null;
     return personRepository.updateEntry({
       entryId: params.entryId,
       title: params.title,
       bodyMd: params.bodyMd,
-      updatedBy: params.updatedBy ?? null,
+      updatedBy,
       messageId: params.messageId ?? existing.discord_message_id ?? null,
     }) ?? null;
   },
