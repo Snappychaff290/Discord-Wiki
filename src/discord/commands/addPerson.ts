@@ -87,22 +87,23 @@ export const addPersonCommand: CommandDefinition = {
       return;
     }
 
-    const existing = personService.getPerson(guildId, name);
-    if (existing) {
-      if (existing.discord_thread_id) {
-        const resolved = await message.client.channels.fetch(existing.discord_thread_id).catch(() => null);
+    let personRecord = personService.getPerson(guildId, name);
+    if (personRecord) {
+      if (personRecord.discord_thread_id) {
+        const resolved = await message.client.channels.fetch(personRecord.discord_thread_id).catch(() => null);
         if (resolved) {
-          const link = `https://discord.com/channels/${guildId}/${existing.discord_thread_id}`;
+          const link = `https://discord.com/channels/${guildId}/${personRecord.discord_thread_id}`;
           await message.reply({
-            content: `A dossier already exists for **${existing.name}**. ${link}`,
+            content: `A dossier already exists for **${personRecord.name}**. ${link}`,
             allowedMentions: { repliedUser: false },
           });
           return;
         }
 
-        personService.clearThread(existing.id);
+        personService.clearThread(personRecord.id);
+        personRecord = personService.getById(personRecord.id);
       }
-
+    } else {
       if (!personService.ensureUniqueName(guildId, name)) {
         await message.reply({
           content: 'That name or alias is already in use. Add an alias or pick a distinct label.',
@@ -121,9 +122,10 @@ export const addPersonCommand: CommandDefinition = {
       return;
     }
 
-    const summaryContent = summary && summary.length > 0
-      ? summary
+    const defaultSummary = personRecord?.summary_md?.trim().length
+      ? personRecord.summary_md
       : `**${name}** — (summary pending)`;
+    const summaryContent = summary && summary.length > 0 ? summary : defaultSummary;
 
     try {
       const thread = await forumChannel.threads.create({
@@ -142,22 +144,32 @@ export const addPersonCommand: CommandDefinition = {
 
       await starterMessage.pin().catch(() => null);
 
-      const person = personService.createPerson({
-        guildId,
-        name,
-        summaryMd: summaryContent,
-        createdBy: message.author.id,
-      });
-
+      let person = personRecord ?? null;
       if (!person) {
-        await message.reply({
-          content: 'Failed to store the dossier record. Please contact an admin.',
-          allowedMentions: { repliedUser: false },
+        person = personService.createPerson({
+          guildId,
+          name,
+          summaryMd: summaryContent,
+          createdBy: message.author.id,
         });
-        return;
+
+        if (!person) {
+          await message.reply({
+            content: 'Failed to store the dossier record. Please contact an admin.',
+            allowedMentions: { repliedUser: false },
+          });
+          return;
+        }
       }
 
-      personService.attachThread(person.id, thread.id, starterMessage.id);
+      person = personService.attachThread(person.id, thread.id, starterMessage.id);
+      if (person) {
+        if (summary) {
+          personService.updateSummary(person.id, summaryContent, message.author.id);
+        } else if (!person.summary_md?.trim()) {
+          personService.updateSummary(person.id, summaryContent, message.author.id);
+        }
+      }
 
       await message.reply({
         content: `Dossier created → https://discord.com/channels/${guildId}/${thread.id}\nUse the web editor to add details.`,
