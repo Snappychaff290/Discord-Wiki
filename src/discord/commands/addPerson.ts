@@ -1,5 +1,6 @@
 import { ChannelType, ForumChannel, Message } from 'discord.js';
 import { personService } from '../../services/personService';
+import { personRepository } from '../../database/repositories/persons';
 import { CommandDefinition } from '../types';
 
 const stripWrappingQuotes = (value: string) => value.replace(/^['"]|['"]$/g, '');
@@ -87,21 +88,28 @@ export const addPersonCommand: CommandDefinition = {
     }
 
     const existing = personService.getPerson(guildId, name);
-    if (existing && existing.discord_thread_id) {
-      const link = `https://discord.com/channels/${guildId}/${existing.discord_thread_id}`;
-      await message.reply({
-        content: `A dossier already exists for **${existing.name}**. ${link}`,
-        allowedMentions: { repliedUser: false },
-      });
-      return;
-    }
+    if (existing) {
+      if (existing.discord_thread_id) {
+        const resolved = await message.client.channels.fetch(existing.discord_thread_id).catch(() => null);
+        if (resolved) {
+          const link = `https://discord.com/channels/${guildId}/${existing.discord_thread_id}`;
+          await message.reply({
+            content: `A dossier already exists for **${existing.name}**. ${link}`,
+            allowedMentions: { repliedUser: false },
+          });
+          return;
+        }
 
-    if (!personService.ensureUniqueName(guildId, name)) {
-      await message.reply({
-        content: 'That name or alias is already in use. Add an alias or pick a distinct label.',
-        allowedMentions: { repliedUser: false },
-      });
-      return;
+        personService.clearThread(existing.id);
+      }
+
+      if (!personService.ensureUniqueName(guildId, name)) {
+        await message.reply({
+          content: 'That name or alias is already in use. Add an alias or pick a distinct label.',
+          allowedMentions: { repliedUser: false },
+        });
+        return;
+      }
     }
 
     const forumChannel = await getForumChannel(message, forumChannelId);
